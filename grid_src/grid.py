@@ -5,10 +5,11 @@ import math
 
 #INSTALLED PACKAGE IMPORTS
 from geopy.point import Point
-from geopy.distance import distance, Distance
+from geopy.distance import distance
 import folium
 
 #IMPORTS FROM THIS PACAKGE
+from grid_src.cell import Cell
 
 folium_colors = ['red','blue','green','purple','orange','darkred','lightred','beige','darkblue','darkgreen','cadetblue','darkpurple','white','pink','lightblue','lightgreen','gray','black','lightgray']
 
@@ -65,7 +66,6 @@ class Grid:
         right_point = self.grid_top_right
         for i in range(self.grid_height+1):
             folium.PolyLine([[left_point.latitude,left_point.longitude],[right_point.latitude,right_point.longitude]],color='darkred',weight=1).add_to(map)
-
             left_point = distance(kilometers=self.cell_height).destination(point=left_point,bearing=180)
             right_point = distance(kilometers=self.cell_height).destination(point=right_point,bearing=180)
 
@@ -74,7 +74,6 @@ class Grid:
         bottom_point = self.grid_bottom_left
         for i in range(self.grid_width+1):
             folium.PolyLine([[top_point.latitude,top_point.longitude],[bottom_point.latitude,bottom_point.longitude]],color='darkblue',weight=1).add_to(map)
-
             top_point = distance(kilometers=self.cell_width).destination(point=top_point,bearing=90)
             bottom_point = distance(kilometers=self.cell_width).destination(point=bottom_point,bearing=90)
 
@@ -110,3 +109,16 @@ class Grid:
 
         #cell_width is the Easy/West distance of a grid cell
         self.cell_width = distance(self.grid_top_left,self.grid_top_right).kilometers/self.grid_height
+
+        grid = []
+        row_top_left = self.grid_top_left
+        for i in range(self.grid_height):
+            row = []
+            row_top_left = distance(kilometers=self.cell_height).destination(point=row_top_left,bearing=180)
+            cell_top_left = row_top_left
+            for j in range(self.grid_width):
+                c = Cell(cell_top_left,self.cell_width,self.cell_height,(i,j))
+                row.append(c)
+                cell_top_left = distance(kilometers=self.cell_width).destination(point=cell_top_left,bearing=90)
+            grid.append(row)
+        self.grid = grid
