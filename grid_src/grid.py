@@ -11,7 +11,7 @@ from shapely import Polygon
 from shapely import Point as ShapelyPoint
 
 #IMPORTS FROM THIS PACAKGE
-from grid_src.cell import Cell
+from grid_src.cell import Cell, LandorWater
 
 folium_colors = ['red','blue','green','purple','orange','darkred','lightred','beige','darkblue','darkgreen','cadetblue','darkpurple','white','pink','lightblue','lightgreen','gray','black','lightgray']
 
@@ -40,7 +40,7 @@ e.g., for a 5x5 grid
 """
 
 class Grid:
-    def __init__(self, scenario_file: str, grid_width: int = 11, grid_height: int = 11):
+    def __init__(self, scenario_file: str, grid_width: int = 11, grid_height: int = 11, print_stats = False):
         self.scenario_file = scenario_file
         self.grid_width = grid_width
         self.grid_height = grid_height
@@ -48,7 +48,8 @@ class Grid:
 
         #the distance the grid should extend up/down/left/right from center **in km**
         self.max_distance_from_center = (self.max_uxv_speed * self.max_time)/1000
-        self.build_grid()
+        self.build_grid(print_stats)
+        self.determine_of_interest()
     
     def plot(self):
         #define a new map at the center point
@@ -56,7 +57,10 @@ class Grid:
 
         for row in self.grid:
             for cell in row:
-                folium.Polygon(cell.poly_coords,color="darkred",weight=1,fill=False).add_to(map)
+                if(cell.type == LandorWater.LAND):
+                    folium.Polygon(cell.poly_coords,color="darkred",weight=3,fill=False).add_to(map)
+                else:
+                    folium.Polygon(cell.poly_coords,color="blue",weight=1,fill=False).add_to(map)
                 #folium.Polygon(cell.poly_coords,color="darkred",weight=1,fill=False, tooltip=folium.Tooltip(text=f"{cell.coordinate}",permanent=True)).add_to(map)
 
        
@@ -105,8 +109,21 @@ class Grid:
 
         #find max scenario execution time
         self.max_time = self.scenario_json["Multi-Run"]["Max Seconds"]
+
+        #find NAIs/LOIs
+        NAIs = []
+        LOIs = []
+        AI = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
+        NAI = AI["Named Area of Interest"]
+        LOI = AI["Locations of Interest"]
+        for area in NAI:
+            NAIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
+        for area in LOI:
+            LOIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
+        
+        self.areas_of_interest = NAIs + LOIs
     
-    def build_grid(self):
+    def build_grid(self, print_stats=False):
         self.grid_top_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=315)
         self.grid_top_right = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=45)
         self.grid_bottom_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=225)
@@ -118,6 +135,8 @@ class Grid:
         #cell_width is the Easy/West distance of a grid cell
         self.cell_width = distance(self.grid_top_left,self.grid_top_right).kilometers/self.grid_width
 
+        water_count = 0
+        land_count = 0
         grid = []
         row_top_left = self.grid_top_left
         for i in range(self.grid_height):
@@ -125,17 +144,25 @@ class Grid:
             cell_top_left = row_top_left
             for j in range(self.grid_width):
                 c = Cell(cell_top_left,self.cell_width,self.cell_height,(i,j))
+                if(c.type == LandorWater.LAND): land_count += 1
+                else: water_count += 1
                 row.append(c)
                 cell_top_left = distance(kilometers=self.cell_width).destination(point=cell_top_left,bearing=90)
             grid.append(row)
             row_top_left = distance(kilometers=self.cell_height).destination(point=row_top_left,bearing=180)
         self.grid = grid
 
+        if(print_stats):
+            print(f"The grid is {self.grid_height} (height) by {self.grid_width} (width)")
+            print(f"Each cell is {self.cell_height} km tall and {self.cell_width} km wide")
+            print(f"Of the {len(self.grid) * len(self.grid[0])} cells, {land_count} of them are land and {water_count} of them are water.")
+            
     def convert_index_to_latlong(self, i: int, j: int) -> Point:
         for row in self.grid:
             for cell in row:
                 if(cell.i == i and cell.j == j):
                     return cell.center.format_decimal()
+        return Point(latitude=0,longitude=0)
 
     def convert_latlong_to_index(self, lat: float, lon: float):
         point = ShapelyPoint(lat,lon)
@@ -144,3 +171,13 @@ class Grid:
                 polygon = Polygon(cell.poly_coords)
                 if(polygon.contains(point)):
                     return (cell.i, cell.j)
+        return (-1,-1)
+    
+    def determine_of_interest(self):
+        for area in self.areas_of_interest:
+            i,j = self.convert_latlong_to_index(area[0],area[1])
+            if(i > -1 and j > -1):
+                self.grid[i][j].set_of_interest()
+    
+    def write_grid_to_file(self):
+        raise NotImplementedError("Grid.write_grid_to_file() has not been implemented!")

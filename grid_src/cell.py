@@ -31,6 +31,7 @@ class Cell:
             [self.bottom_left.latitude,self.bottom_left.longitude],
             [self.top_left.latitude,self.top_left.longitude]
         ]
+        self.of_interest = False
     
     def compute_corners(self):
         corner_distance = math.sqrt((self.width/2)**2 + (self.height/2)**2)
@@ -46,5 +47,8 @@ class Cell:
         for sample in sample_list:
             if(globe.is_land(sample.latitude,sample.longitude)):
                 land_counter+=1
-        if(land_counter > len(sample_list)/2):
-            self.type = LandorWater.LAND   
+        if(land_counter > 1):#len(sample_list)/2):
+            self.type = LandorWater.LAND
+    
+    def set_of_interest(self, of_interest = True):
+        self.of_interest = of_interest
