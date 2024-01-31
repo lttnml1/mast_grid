@@ -24,13 +24,20 @@ class Cell:
         self.j = coordinate[1]
         self.compute_corners()
         self.land_or_water()
+        self.poly_coords = [
+            [self.top_left.latitude,self.top_left.longitude],
+            [self.top_right.latitude,self.top_right.longitude],
+            [self.bottom_right.latitude,self.bottom_right.longitude],
+            [self.bottom_left.latitude,self.bottom_left.longitude],
+            [self.top_left.latitude,self.top_left.longitude]
+        ]
     
     def compute_corners(self):
-        corner_distance = math.sqrt(self.width**2 + self.height**2)
-        self.center = distance(kilometers = corner_distance).destination(point=self.top_left,bearing=135)
-        self.top_right = distance(kilometers = corner_distance).destination(point=self.center,bearing=45)
-        self.bottom_right = distance(kilometers = corner_distance).destination(point=self.center,bearing=135)
-        self.bottom_left = distance(kilometers = corner_distance).destination(point=self.center,bearing=225)
+        corner_distance = math.sqrt((self.width/2)**2 + (self.height/2)**2)
+        self.center = distance(kilometers = corner_distance).destination(point=self.top_left,bearing=180-math.degrees(math.atan(self.width/self.height)))
+        self.top_right = distance(kilometers = corner_distance).destination(point=self.center,bearing=math.degrees(math.atan(self.width/self.height)))
+        self.bottom_right = distance(kilometers = corner_distance).destination(point=self.center,bearing=180-math.degrees(math.atan(self.width/self.height)))
+        self.bottom_left = distance(kilometers = corner_distance).destination(point=self.center,bearing=180+math.degrees(math.atan(self.width/self.height)))
     
     def land_or_water(self):
         land_counter = 0

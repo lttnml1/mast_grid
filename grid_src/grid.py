@@ -7,6 +7,8 @@ import math
 from geopy.point import Point
 from geopy.distance import distance
 import folium
+from shapely import Polygon
+from shapely import Point as ShapelyPoint
 
 #IMPORTS FROM THIS PACAKGE
 from grid_src.cell import Cell
@@ -52,6 +54,12 @@ class Grid:
         #define a new map at the center point
         map = folium.Map(location = [self.center.latitude,self.center.longitude], zoom_start = 6)
 
+        for row in self.grid:
+            for cell in row:
+                folium.Polygon(cell.poly_coords,color="darkred",weight=1,fill=False).add_to(map)
+                #folium.Polygon(cell.poly_coords,color="darkred",weight=1,fill=False, tooltip=folium.Tooltip(text=f"{cell.coordinate}",permanent=True)).add_to(map)
+
+       
         #plot the center point
         folium.CircleMarker([self.center.latitude,self.center.longitude],radius=20,color='black',fill=False,tooltip=folium.Tooltip(text="START",permanent=True)).add_to(map)
 
@@ -60,7 +68,7 @@ class Grid:
         folium.CircleMarker([self.grid_top_right.latitude,self.grid_top_right.longitude],radius=10,color='green',fill=False,tooltip=folium.Tooltip(text="TopRight",permanent=True)).add_to(map)
         folium.CircleMarker([self.grid_bottom_right.latitude,self.grid_bottom_right.longitude],radius=10,color='orange',fill=False,tooltip=folium.Tooltip(text="BottomRight",permanent=True)).add_to(map)
         folium.CircleMarker([self.grid_bottom_left.latitude,self.grid_bottom_left.longitude],radius=10,color='pink',fill=False,tooltip=folium.Tooltip(text="BottomLeft",permanent=True)).add_to(map)
-        
+        """
         #first plot rows (east-west lines)
         left_point = self.grid_top_left
         right_point = self.grid_top_right
@@ -76,7 +84,7 @@ class Grid:
             folium.PolyLine([[top_point.latitude,top_point.longitude],[bottom_point.latitude,bottom_point.longitude]],color='darkblue',weight=1).add_to(map)
             top_point = distance(kilometers=self.cell_width).destination(point=top_point,bearing=90)
             bottom_point = distance(kilometers=self.cell_width).destination(point=bottom_point,bearing=90)
-
+        """
         #display the map
         display(map)
     
@@ -108,17 +116,31 @@ class Grid:
         self.cell_height = distance(self.grid_top_left,self.grid_bottom_left).kilometers/self.grid_height
 
         #cell_width is the Easy/West distance of a grid cell
-        self.cell_width = distance(self.grid_top_left,self.grid_top_right).kilometers/self.grid_height
+        self.cell_width = distance(self.grid_top_left,self.grid_top_right).kilometers/self.grid_width
 
         grid = []
         row_top_left = self.grid_top_left
         for i in range(self.grid_height):
             row = []
-            row_top_left = distance(kilometers=self.cell_height).destination(point=row_top_left,bearing=180)
             cell_top_left = row_top_left
             for j in range(self.grid_width):
                 c = Cell(cell_top_left,self.cell_width,self.cell_height,(i,j))
                 row.append(c)
                 cell_top_left = distance(kilometers=self.cell_width).destination(point=cell_top_left,bearing=90)
             grid.append(row)
+            row_top_left = distance(kilometers=self.cell_height).destination(point=row_top_left,bearing=180)
         self.grid = grid
+
+    def convert_index_to_latlong(self, i: int, j: int) -> Point:
+        for row in self.grid:
+            for cell in row:
+                if(cell.i == i and cell.j == j):
+                    return cell.center.format_decimal()
+
+    def convert_latlong_to_index(self, lat: float, lon: float):
+        point = ShapelyPoint(lat,lon)
+        for row in self.grid:
+            for cell in row:
+                polygon = Polygon(cell.poly_coords)
+                if(polygon.contains(point)):
+                    return (cell.i, cell.j)
