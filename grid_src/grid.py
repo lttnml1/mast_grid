@@ -19,7 +19,7 @@ folium_colors = ['red','blue','green','purple','orange','darkred','lightred','be
 The grid is an overlay of the map with center at the starting point of the Blue Frigate
 Rows/Columns are zero-based
 Rows increase to the South
-Columns increase to the North
+Columns increase to the East
 
 e.g., for a 5x5 grid
 
@@ -63,7 +63,20 @@ class Grid:
                     folium.Polygon(cell.poly_coords,color="blue",weight=1,fill=False).add_to(map)
                 #folium.Polygon(cell.poly_coords,color="darkred",weight=1,fill=False, tooltip=folium.Tooltip(text=f"{cell.coordinate}",permanent=True)).add_to(map)
 
-       
+
+        #Plot BLUE initial location
+        folium.CircleMarker([self.center.latitude,self.center.longitude],radius=10,color='blue',fill=False,tooltip=folium.Tooltip(text="BLUE FFG",permanent=True)).add_to(map)
+
+        #Plot RED initial location
+        folium.CircleMarker([self.red_loc.latitude,self.red_loc.longitude],radius=10,color='red',fill=False,tooltip=folium.Tooltip(text="RED FFG",permanent=True)).add_to(map)
+
+        #Plot TAIs
+        count = 0
+        for area in self.areas_of_interest:
+            folium.CircleMarker([area[0],area[1]],radius=10,color='orange',fill=False,tooltip=folium.Tooltip(text=f"TAI {count}",permanent=True)).add_to(map)
+            count += 1
+        
+        """
         #plot the center point
         folium.CircleMarker([self.center.latitude,self.center.longitude],radius=20,color='black',fill=False,tooltip=folium.Tooltip(text="START",permanent=True)).add_to(map)
 
@@ -72,7 +85,7 @@ class Grid:
         folium.CircleMarker([self.grid_top_right.latitude,self.grid_top_right.longitude],radius=10,color='green',fill=False,tooltip=folium.Tooltip(text="TopRight",permanent=True)).add_to(map)
         folium.CircleMarker([self.grid_bottom_right.latitude,self.grid_bottom_right.longitude],radius=10,color='orange',fill=False,tooltip=folium.Tooltip(text="BottomRight",permanent=True)).add_to(map)
         folium.CircleMarker([self.grid_bottom_left.latitude,self.grid_bottom_left.longitude],radius=10,color='pink',fill=False,tooltip=folium.Tooltip(text="BottomLeft",permanent=True)).add_to(map)
-        """
+        
         #first plot rows (east-west lines)
         left_point = self.grid_top_left
         right_point = self.grid_top_right
@@ -101,6 +114,11 @@ class Grid:
         initial_blue_loc = self.scenario_json["Multi-Run"]["Agents"][0]["Platform"]["Initial Location"]["Position"]
         self.center = Point(latitude=initial_blue_loc["Lat"]["Angle"],longitude=initial_blue_loc["Lon"]["Angle"])
 
+        #find initial location for RED FFG
+        initial_red_loc = self.scenario_json["Multi-Run"]["Agents"][1]["Platform"]["Initial Location"]["Position"]
+        self.red_loc = Point(latitude=initial_red_loc["Lat"]["Angle"],longitude=initial_red_loc["Lon"]["Angle"])
+
+
         #find max UxV speed (m/s)
         uxv_speeds = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
         self.max_uxv_speed = uxv_speeds["UAV Speed"]["Speed"]
@@ -121,7 +139,7 @@ class Grid:
         for area in LOI:
             LOIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
         
-        self.areas_of_interest = NAIs + LOIs
+        self.areas_of_interest = NAIs# + LOIs
     
     def build_grid(self, print_stats=False):
         self.grid_top_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=315)
