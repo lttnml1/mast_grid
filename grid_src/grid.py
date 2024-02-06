@@ -105,7 +105,7 @@ class Grid:
         #display the map
         display(map)
     
-    def parse_scenario_file(self,print_json=False):
+    def parse_scenario_file(self,print_json=True):
         self.scenario_json = json.load(open(self.scenario_file))
         if(print_json):
             print(json.dumps(self.scenario_json,indent=4))
