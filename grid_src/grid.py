@@ -111,35 +111,59 @@ class Grid:
             print(json.dumps(self.scenario_json,indent=4))
 
         #find initial location of BLUE FFG
-        initial_blue_loc = self.scenario_json["Multi-Run"]["Agents"][0]["Platform"]["Initial Location"]["Position"]
-        self.center = Point(latitude=initial_blue_loc["Lat"]["Angle"],longitude=initial_blue_loc["Lon"]["Angle"])
+        try:
+            initial_blue_loc = self.scenario_json["Multi-Run"]["Agents"][0]["Platform"]["Initial Location"]["Position"]
+            self.center = Point(latitude=initial_blue_loc["Lat"]["Angle"],longitude=initial_blue_loc["Lon"]["Angle"])
+        except KeyError:
+            print("Error reading initial BLUE location from JSON")
 
         #find initial location for RED FFG
-        initial_red_loc = self.scenario_json["Multi-Run"]["Agents"][1]["Platform"]["Initial Location"]["Position"]
-        self.red_loc = Point(latitude=initial_red_loc["Lat"]["Angle"],longitude=initial_red_loc["Lon"]["Angle"])
-
+        try:
+            initial_red_loc = self.scenario_json["Multi-Run"]["Agents"][1]["Platform"]["Initial Location"]["Position"]
+            self.red_loc = Point(latitude=initial_red_loc["Lat"]["Angle"],longitude=initial_red_loc["Lon"]["Angle"])
+        except KeyError:
+            print("Error reading initial RED location from JSON")
 
         #find max UxV speed (m/s)
-        uxv_speeds = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
-        self.max_uxv_speed = uxv_speeds["UAV Speed"]["Speed"]
-        if(uxv_speeds["USV Speed"]["Speed"] > self.max_uxv_speed):
-            self.max_uxv_speed = uxv_speeds["USV Speed"]["Speed"]
+        try:
+            uxv_speeds = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
+            self.max_uxv_speed = uxv_speeds["UAV Speed"]["Speed"]
+            if(uxv_speeds["USV Speed"]["Speed"] > self.max_uxv_speed):
+                self.max_uxv_speed = uxv_speeds["USV Speed"]["Speed"]
+        except KeyError:
+            print("Error reading initial UxV speeds from JSON")
 
         #find max scenario execution time
-        self.max_time = self.scenario_json["Multi-Run"]["Max Seconds"]
+        try:
+            self.max_time = self.scenario_json["Multi-Run"]["Max Seconds"]
+        except KeyError:
+            print("Error reading max scenario execution time from JSON")
 
         #find NAIs/LOIs
         NAIs = []
         LOIs = []
-        AI = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
-        NAI = AI["Named Area of Interest"]
-        LOI = AI["Locations of Interest"]
-        for area in NAI:
-            NAIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
-        for area in LOI:
-            LOIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
+        try:
+            AI = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
+            NAI = AI["Named Area of Interest"]
+            LOI = AI["Locations of Interest"]
+            for area in NAI:
+                NAIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
+            for area in LOI:
+                LOIs.append([area["Lat"]["Angle"],area["Lon"]["Angle"]])
+        except KeyError:
+            print("Error reading areas of interest from JSON")
         
         self.areas_of_interest = NAIs# + LOIs
+
+        #find BLUE FFG/Virtual Leader Waypoints
+        blue_wps = []
+        try:
+            for wp in self.scenario_json["Multi-Run"]["Agents"][0]["State Machines"][3]["States"][0]["State"]["Waypoints"]:
+                blue_wps.append([wp["Lat"]["Angle"],wp["Lon"]["Angle"]])
+        except KeyError:
+            print("Error reading BLUE waypoints from JSON")
+        self.blue_waypoints = blue_wps
+
     
     def build_grid(self, print_stats=False):
         self.grid_top_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=315)
@@ -197,5 +221,21 @@ class Grid:
             if(i > -1 and j > -1):
                 self.grid[i][j].set_of_interest()
     
-    def write_grid_to_file(self):
-        raise NotImplementedError("Grid.write_grid_to_file() has not been implemented!")
+    def write_grid_to_file(self, file_name):
+        with open(file_name, "w") as grid_file:
+            grid_file.write(f"{self.grid_height},{self.grid_width}\n")
+            for wp in self.blue_waypoints:
+                grid_file.write(f"{wp[0]},{wp[1]}")
+                if(self.blue_waypoints.index(wp) < len(self.blue_waypoints)-1):grid_file.write(",") 
+            grid_file.write("\n")
+            grid_file.write("Destination?\n")
+            grid_file.write(f"{math.floor(self.max_time/1800)}\n")
+            for ai in self.areas_of_interest:
+                grid_file.write(f"{ai[0]},{ai[1]}")
+                if(self.areas_of_interest.index(ai) < len(self.areas_of_interest)-1):grid_file.write(",") 
+            grid_file.write("\n")
+            counter = 0
+            for row in self.grid:
+                for cell in row:
+                    grid_file.write(f"{counter},{cell.center.latitude},{cell.center.longitude},{cell.type.value}\n")
+                    counter += 1

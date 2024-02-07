@@ -11,8 +11,8 @@ from global_land_mask import globe
 #IMPORTS FROM THIS PACAKGE
 
 class LandorWater(Enum):
-    LAND = 1
-    WATER = 2
+    LAND = 0
+    WATER = 1
 
 class Cell:
     def __init__(self, top_left: Point, width: int, height: int, coordinate):
