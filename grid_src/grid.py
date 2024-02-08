@@ -9,6 +9,7 @@ from geopy.distance import distance
 import folium
 from shapely import Polygon
 from shapely import Point as ShapelyPoint
+import numpy as np
 
 #IMPORTS FROM THIS PACAKGE
 from grid_src.cell import Cell, LandorWater
@@ -53,7 +54,7 @@ class Grid:
     
     def plot(self):
         #define a new map at the center point
-        map = folium.Map(location = [self.center.latitude,self.center.longitude], zoom_start = 6)
+        map = folium.Map(location = [self.grid_center.latitude,self.grid_center.longitude], zoom_start = 6)
 
         for row in self.grid:
             for cell in row:
@@ -65,7 +66,7 @@ class Grid:
 
 
         #Plot BLUE initial location
-        folium.CircleMarker([self.center.latitude,self.center.longitude],radius=10,color='blue',fill=False,tooltip=folium.Tooltip(text="BLUE FFG",permanent=True)).add_to(map)
+        folium.CircleMarker([self.initial_blue_loc.latitude,self.initial_blue_loc.longitude],radius=10,color='blue',fill=False,tooltip=folium.Tooltip(text="BLUE FFG",permanent=True)).add_to(map)
 
         #Plot RED initial location
         folium.CircleMarker([self.red_loc.latitude,self.red_loc.longitude],radius=10,color='red',fill=False,tooltip=folium.Tooltip(text="RED FFG",permanent=True)).add_to(map)
@@ -78,7 +79,7 @@ class Grid:
         
         """
         #plot the center point
-        folium.CircleMarker([self.center.latitude,self.center.longitude],radius=20,color='black',fill=False,tooltip=folium.Tooltip(text="START",permanent=True)).add_to(map)
+        folium.CircleMarker([self.initial_blue_loc.latitude,self.initial_blue_loc.longitude],radius=20,color='black',fill=False,tooltip=folium.Tooltip(text="START",permanent=True)).add_to(map)
 
         #plot edges of graph
         folium.CircleMarker([self.grid_top_left.latitude,self.grid_top_left.longitude],radius=10,color='blue',fill=False,tooltip=folium.Tooltip(text="TopLeft",permanent=True)).add_to(map)
@@ -113,7 +114,7 @@ class Grid:
         #find initial location of BLUE FFG
         try:
             initial_blue_loc = self.scenario_json["Multi-Run"]["Agents"][0]["Platform"]["Initial Location"]["Position"]
-            self.center = Point(latitude=initial_blue_loc["Lat"]["Angle"],longitude=initial_blue_loc["Lon"]["Angle"])
+            self.initial_blue_loc = Point(latitude=initial_blue_loc["Lat"]["Angle"],longitude=initial_blue_loc["Lon"]["Angle"])
         except KeyError:
             print("Error reading initial BLUE location from JSON")
 
@@ -166,10 +167,44 @@ class Grid:
 
     
     def build_grid(self, print_stats=False):
-        self.grid_top_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=315)
-        self.grid_top_right = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=45)
-        self.grid_bottom_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=225)
-        self.grid_bottom_right = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.center,bearing=135)
+        grid_factor = 2
+        #consider blue waypoints, NAIs, red location, go some factor out from that
+        relevant_points = np.array([[self.initial_blue_loc[0],self.initial_blue_loc[1]]] + self.blue_waypoints + self.areas_of_interest)
+        grid_center = relevant_points.mean(axis=0)
+        self.grid_center = Point(grid_center[0],grid_center[1])
+
+        #initialize points
+        left = right = top = bottom = relevant_points[0]
+        #identify leftmost, rightmost, topmost, and bottommost points from those above
+        for p in relevant_points:
+            if p[1] < left[1]: left = p
+            if p[1] > right[1]: right = p
+            if p[0] > top[0]: top = p
+            if p[0] < bottom[0]: bottom = p
+        
+        #now identify top_left point (latitude of top, longitude of left)
+        top_left = Point(top[0],left[1])
+        
+        #now compute the grid width and height
+        self.grid_width_km = distance(Point(self.grid_center[0],top_left[1]),self.grid_center).km * grid_factor
+        self.grid_height_km = distance(top_left,Point(self.grid_center[0],top_left[1])).km * grid_factor
+        grid_corner_distance = math.sqrt(self.grid_width_km**2+self.grid_height_km**2)
+
+        self.grid_top_left = distance(kilometers = grid_corner_distance).destination(point=self.grid_center,bearing=270+math.degrees(math.atan(self.grid_height_km/self.grid_width_km)))
+        self.grid_top_right = distance(kilometers = grid_corner_distance).destination(point=self.grid_center,bearing=math.degrees(math.atan(self.grid_width_km/self.grid_height_km)))
+        self.grid_bottom_right = distance(kilometers = grid_corner_distance).destination(point=self.grid_center,bearing=180-math.degrees(math.atan(self.grid_width_km/self.grid_height_km)))
+        self.grid_bottom_left = distance(kilometers = grid_corner_distance).destination(point=self.grid_center,bearing=180+math.degrees(math.atan(self.grid_width_km/self.grid_height_km)))
+
+        #this is what I did when I wanted to put BLUE FFG at the center and then make a square grid the maximum
+        #   distance a UxV could travel in all directions out from that
+        #*************************
+        """
+        self.grid_top_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.initial_blue_loc,bearing=315)
+        self.grid_top_right = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.initial_blue_loc,bearing=45)
+        self.grid_bottom_left = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.initial_blue_loc,bearing=225)
+        self.grid_bottom_right = distance(kilometers = self.max_distance_from_center * math.sqrt(2)).destination(point=self.initial_blue_loc,bearing=135)
+        """
+        #*************************
 
         #cell_height is the North/South distance of a grid cell
         self.cell_height = distance(self.grid_top_left,self.grid_bottom_left).kilometers/self.grid_height
@@ -225,17 +260,21 @@ class Grid:
         with open(file_name, "w") as grid_file:
             grid_file.write(f"{self.grid_height},{self.grid_width}\n")
             for wp in self.blue_waypoints:
-                grid_file.write(f"{wp[0]},{wp[1]}")
+                blue_i,blue_j = self.convert_latlong_to_index(wp[0],wp[1])
+                grid_file.write(f"{blue_i},{blue_j}")
                 if(self.blue_waypoints.index(wp) < len(self.blue_waypoints)-1):grid_file.write(",") 
             grid_file.write("\n")
-            grid_file.write("Destination?\n")
+            grid_file.write("0,0,0,1\n")
             grid_file.write(f"{math.floor(self.max_time/1800)}\n")
             for ai in self.areas_of_interest:
-                grid_file.write(f"{ai[0]},{ai[1]}")
+                ai_i,ai_j = self.convert_latlong_to_index(ai[0],ai[1])
+                grid_file.write(f"{ai_i},{ai_j}")
                 if(self.areas_of_interest.index(ai) < len(self.areas_of_interest)-1):grid_file.write(",") 
             grid_file.write("\n")
-            counter = 0
+            i = 0
             for row in self.grid:
+                j = 0
                 for cell in row:
-                    grid_file.write(f"{counter},{cell.center.latitude},{cell.center.longitude},{cell.type.value}\n")
-                    counter += 1
+                    grid_file.write(f"{i},{j},{cell.top_left.latitude},{cell.top_left.longitude},{cell.top_right.latitude},{cell.top_right.longitude},{cell.bottom_right.latitude},{cell.bottom_right.longitude},{cell.bottom_left.latitude},{cell.bottom_left.longitude},{cell.center.latitude},{cell.center.longitude}\n")
+                    j += 1
+                i += 1
