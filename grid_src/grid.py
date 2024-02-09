@@ -6,6 +6,7 @@ import math
 #INSTALLED PACKAGE IMPORTS
 from geopy.point import Point
 from geopy.distance import distance
+from geopy import units
 import folium
 from shapely import Polygon
 from shapely import Point as ShapelyPoint
@@ -54,7 +55,7 @@ class Grid:
     
     def plot(self):
         #define a new map at the center point
-        map = folium.Map(location = [self.grid_center.latitude,self.grid_center.longitude], zoom_start = 6)
+        map = folium.Map(location = [self.grid_center.latitude,self.grid_center.longitude], zoom_start = 8)
 
         for row in self.grid:
             for cell in row:
@@ -127,12 +128,25 @@ class Grid:
 
         #find max UxV speed (m/s)
         try:
-            uxv_speeds = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
-            self.max_uxv_speed = uxv_speeds["UAV Speed"]["Speed"]
-            if(uxv_speeds["USV Speed"]["Speed"] > self.max_uxv_speed):
-                self.max_uxv_speed = uxv_speeds["USV Speed"]["Speed"]
+            uxv_info = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
+            self.max_uxv_speed = uxv_info["UAV Speed"]["Speed"]
+            if(uxv_info["USV Speed"]["Speed"] > self.max_uxv_speed):
+                self.max_uxv_speed = uxv_info["USV Speed"]["Speed"]
         except KeyError:
             print("Error reading initial UxV speeds from JSON")
+
+        #find number of UAVs and USVs
+        try:
+            self.num_uavs = uxv_info["Number of UAVs"]
+            self.num_usvs = uxv_info["Number of USVs"]
+        except KeyError:
+            print("Error reading number of UxVs from JSON")
+
+        #find maximum comms range
+        try:
+            self.max_comms_range = uxv_info["Maximum Comms Range"]["Distance"]
+        except KeyError:
+            print("Error reading maximum comms range from JSON")
 
         #find max scenario execution time
         try:
@@ -166,12 +180,14 @@ class Grid:
         self.blue_waypoints = blue_wps
 
     
-    def build_grid(self, print_stats=False):
-        grid_factor = 2
+    def build_grid(self, print_stats=False):    
         #consider blue waypoints, NAIs, red location, go some factor out from that
         relevant_points = np.array([[self.initial_blue_loc[0],self.initial_blue_loc[1]]] + self.blue_waypoints + self.areas_of_interest)
         grid_center = relevant_points.mean(axis=0)
         self.grid_center = Point(grid_center[0],grid_center[1])
+
+        #extend the grid beyond all relevant points by a factor of num_uxvs*max_comms_range
+        grid_factor = (self.num_uavs+self.num_usvs) * units.km(meters=self.max_comms_range)
 
         #initialize points
         left = right = top = bottom = relevant_points[0]
@@ -185,9 +201,9 @@ class Grid:
         #now identify top_left point (latitude of top, longitude of left)
         top_left = Point(top[0],left[1])
         
-        #now compute the grid width and height
-        self.grid_width_km = distance(Point(self.grid_center[0],top_left[1]),self.grid_center).km * grid_factor
-        self.grid_height_km = distance(top_left,Point(self.grid_center[0],top_left[1])).km * grid_factor
+        #now compute the grid width and height and extend them by the grid factor
+        self.grid_width_km = distance(Point(self.grid_center[0],top_left[1]),self.grid_center).km + grid_factor
+        self.grid_height_km = distance(top_left,Point(self.grid_center[0],top_left[1])).km + grid_factor
         grid_corner_distance = math.sqrt(self.grid_width_km**2+self.grid_height_km**2)
 
         self.grid_top_left = distance(kilometers = grid_corner_distance).destination(point=self.grid_center,bearing=270+math.degrees(math.atan(self.grid_height_km/self.grid_width_km)))
@@ -259,6 +275,8 @@ class Grid:
     def write_grid_to_file(self, file_name):
         with open(file_name, "w") as grid_file:
             grid_file.write(f"{self.grid_height},{self.grid_width}\n")
+            grid_file.write(f"{self.num_uavs},{self.num_usvs}\n")
+            grid_file.write(f"{self.max_comms_range}\n")
             for wp in self.blue_waypoints:
                 blue_i,blue_j = self.convert_latlong_to_index(wp[0],wp[1])
                 grid_file.write(f"{blue_i},{blue_j}")
