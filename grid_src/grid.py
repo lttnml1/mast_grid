@@ -293,6 +293,6 @@ class Grid:
             for row in self.grid:
                 j = 0
                 for cell in row:
-                    grid_file.write(f"{i},{j},{cell.top_left.latitude},{cell.top_left.longitude},{cell.top_right.latitude},{cell.top_right.longitude},{cell.bottom_right.latitude},{cell.bottom_right.longitude},{cell.bottom_left.latitude},{cell.bottom_left.longitude},{cell.center.latitude},{cell.center.longitude}\n")
+                    grid_file.write(f"{i},{j},{cell.type.value},{cell.top_left.latitude},{cell.top_left.longitude},{cell.top_right.latitude},{cell.top_right.longitude},{cell.bottom_right.latitude},{cell.bottom_right.longitude},{cell.bottom_left.latitude},{cell.bottom_left.longitude},{cell.center.latitude},{cell.center.longitude}\n")
                     j += 1
                 i += 1

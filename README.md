@@ -7,4 +7,4 @@ The format of the grid_output.txt file is:
 - the maximum number of 30-minute cycles that can occur
 - the areas of interest i_1,j_1,i_2,j_2,etc.
 - for the next 0...NxM rows:
-    - i,j,TL_lat,TL_lon,TR_lat,TR_lon,BR_lat,BR_lon,BL_lat,BL_lon,CENTER_lat,CENTER_lon
+    - i,j,0(Land)/1(Water),TL_lat,TL_lon,TR_lat,TR_lon,BR_lat,BR_lon,BL_lat,BL_lon,CENTER_lat,CENTER_lon
