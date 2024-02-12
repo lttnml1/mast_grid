@@ -277,7 +277,11 @@ class Grid:
             grid_file.write(f"{self.grid_height},{self.grid_width}\n")
             grid_file.write(f"{self.num_uavs},{self.num_usvs}\n")
             grid_file.write(f"{self.max_comms_range}\n")
-            for wp in self.blue_waypoints:
+            init_blue_loc = self.convert_latlong_to_index(self.initial_blue_loc.latitude,self.initial_blue_loc.longitude)
+            grid_file.write(f"{init_blue_loc[0]},{init_blue_loc[1]}\n")
+            red_loc = self.convert_latlong_to_index(self.red_loc.latitude,self.red_loc.longitude)
+            grid_file.write(f"{red_loc[0]},{red_loc[1]}\n")
+            for wp in self.blue_waypoints[4:]:
                 blue_i,blue_j = self.convert_latlong_to_index(wp[0],wp[1])
                 grid_file.write(f"{blue_i},{blue_j}")
                 if(self.blue_waypoints.index(wp) < len(self.blue_waypoints)-1):grid_file.write(",") 
