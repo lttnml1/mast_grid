@@ -2,6 +2,7 @@
 #NATIVE PYTHON IMPORTS
 import json
 import math
+import os
 
 #INSTALLED PACKAGE IMPORTS
 from geopy.point import Point
@@ -42,16 +43,18 @@ e.g., for a 5x5 grid
 """
 
 class Grid:
-    def __init__(self, scenario_file: str, grid_width: int = 11, grid_height: int = 11, print_stats = False):
+    def __init__(self, scenario_file: str, new_results_dir: str, grid_width: int = 11, grid_height: int = 11, print_stats = False):
         self.scenario_file = scenario_file
+        self.new_results_dir = new_results_dir
         self.grid_width = grid_width
         self.grid_height = grid_height
-        self.parse_scenario_file()
+        self.parse_scenario_file(print_stats)
 
         #the distance the grid should extend up/down/left/right from center **in km**
         self.max_distance_from_center = (self.max_uxv_speed * self.max_time)/1000
         self.build_grid(print_stats)
         self.determine_of_interest()
+        self.compare_blue_locations()
     
     def plot(self):
         #define a new map at the center point
@@ -281,10 +284,20 @@ class Grid:
             grid_file.write(f"{init_blue_loc[0]},{init_blue_loc[1]}\n")
             red_loc = self.convert_latlong_to_index(self.red_loc.latitude,self.red_loc.longitude)
             grid_file.write(f"{red_loc[0]},{red_loc[1]}\n")
+            
+            
+            #No longer writing waypoints, writing actual locations
+            for wp in self.expected_blue_locs[1:]:
+                blue_i,blue_j = self.convert_latlong_to_index(wp.latitude,wp.longitude)
+                grid_file.write(f"{blue_i},{blue_j}")
+                if(self.expected_blue_locs.index(wp) < len(self.expected_blue_locs)-1):grid_file.write(",") 
+            """
             for wp in self.blue_waypoints[4:]:
                 blue_i,blue_j = self.convert_latlong_to_index(wp[0],wp[1])
                 grid_file.write(f"{blue_i},{blue_j}")
                 if(self.blue_waypoints.index(wp) < len(self.blue_waypoints)-1):grid_file.write(",") 
+            """
+
             grid_file.write("\n")
             grid_file.write("0,0,0,1\n")
             grid_file.write(f"{math.floor(self.max_time/1800)}\n")
@@ -300,3 +313,44 @@ class Grid:
                     grid_file.write(f"{i},{j},{cell.type.value},{cell.top_left.latitude},{cell.top_left.longitude},{cell.top_right.latitude},{cell.top_right.longitude},{cell.bottom_right.latitude},{cell.bottom_right.longitude},{cell.bottom_left.latitude},{cell.bottom_left.longitude},{cell.center.latitude},{cell.center.longitude}\n")
                     j += 1
                 i += 1
+    
+    def compare_blue_locations(self):
+        self.expected_blue_locs = [Point(10.298183407271734, 125.42721842883968, 0.0), 
+                              Point(10.130969823470098, 125.41850233757421, 0.0), 
+                              Point(9.963840369595882, 125.40833491170794, 0.0), 
+                              Point(9.810285921039068, 125.364250908715, 0.0), 
+                              Point(9.684541462186658, 125.2527950294398, 0.0), 
+                              Point(9.571534882505546, 125.12856116849697, 0.0), 
+                              Point(9.487940622965128, 124.98855273253092, 0.0), 
+                              Point(9.456442977957991, 124.82291109663528, 0.0), 
+                              Point(9.41234750241341, 124.66278948644512, 0.0), 
+                              Point(9.313442901222928, 124.52674442207092, 0.0), 
+                              Point(9.252209964642697, 124.37402247653249, 0.0), 
+                              Point(9.17065528734211, 124.26857400235433, 0.0), 
+                              Point(9.003208009504883, 124.26857400037845, 0.0), 
+                              Point(8.875141808637514, 124.17261880174195, 0.0)]
+        UxV_list = []
+        times_list = []
+        data_dir = self.new_results_dir
+        for dirName, subdirList, fileList in os.walk(data_dir):
+            for subdir in subdirList:
+                if("blue" in subdir):
+                    UxV_list.append(subdir)
+                else: times_list.append(subdir)
+
+        UxV_list = sorted(list(set(UxV_list)))
+        times_list = sorted(list(set(times_list)),key=int)
+
+        new_blue_locations = []
+        for time in times_list:
+            file_orig = data_dir + "/" + UxV_list[0] + "/" + time + "/" + "command.json"
+            command = json.load(open(file_orig))
+            vl_loc = command["virtualLeader"]["position"]
+            new_blue_locations.append(Point(latitude=vl_loc["lat"],longitude=vl_loc["lon"]))
+        
+        dist = 0
+        for i in range(len(new_blue_locations)):
+            dist += distance(self.expected_blue_locs[i],new_blue_locations[i]).km
+        
+        if(dist > 0.01):
+            raise Exception(f"There is a difference of {dist} km in the expected Virtual Leader positions and those read from: {data_dir}")
