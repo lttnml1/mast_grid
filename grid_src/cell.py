@@ -15,7 +15,7 @@ class LandorWater(Enum):
     WATER = 1
 
 class Cell:
-    def __init__(self, top_left: Point, width: int, height: int, coordinate):
+    def __init__(self, top_left: Point, width: int, height: int, coordinate, debug=False):
         self.top_left = top_left
         self.width = width
         self.height = height
@@ -23,7 +23,7 @@ class Cell:
         self.i = coordinate[0]
         self.j = coordinate[1]
         self.compute_corners()
-        self.land_or_water()
+        self.land_or_water(debug)
         self.poly_coords = [
             [self.top_left.latitude,self.top_left.longitude],
             [self.top_right.latitude,self.top_right.longitude],
@@ -40,12 +40,15 @@ class Cell:
         self.bottom_right = distance(kilometers = corner_distance).destination(point=self.center,bearing=180-math.degrees(math.atan(self.width/self.height)))
         self.bottom_left = distance(kilometers = corner_distance).destination(point=self.center,bearing=180+math.degrees(math.atan(self.width/self.height)))
     
-    def land_or_water(self):
+    def land_or_water(self,debug=False):
         land_counter = 0
         self.type = LandorWater.WATER
         sample_list = [self.center,self.top_left,self.top_right,self.bottom_left,self.bottom_right]
         for sample in sample_list:
-            if(globe.is_land(sample.latitude,sample.longitude)):
+            land = globe.is_land(sample.latitude,sample.longitude)
+            if(debug):
+                    print(f"{sample.format_decimal()},red,square,{land}")
+            if(land):
                 land_counter+=1
         if(land_counter > 1):#len(sample_list)/2):
             self.type = LandorWater.LAND

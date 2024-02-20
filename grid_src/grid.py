@@ -68,7 +68,6 @@ class Grid:
                     folium.Polygon(cell.poly_coords,color="blue",weight=1,fill=False).add_to(map)
                 #folium.Polygon(cell.poly_coords,color="darkred",weight=1,fill=False, tooltip=folium.Tooltip(text=f"{cell.coordinate}",permanent=True)).add_to(map)
 
-
         #Plot BLUE initial location
         folium.CircleMarker([self.initial_blue_loc.latitude,self.initial_blue_loc.longitude],radius=10,color='blue',fill=False,tooltip=folium.Tooltip(text="BLUE FFG",permanent=True)).add_to(map)
 
@@ -239,7 +238,10 @@ class Grid:
             row = []
             cell_top_left = row_top_left
             for j in range(self.grid_width):
-                c = Cell(cell_top_left,self.cell_width,self.cell_height,(i,j))
+                #if(i == 0 and j == 60):
+                #    c = Cell(cell_top_left,self.cell_width,self.cell_height,(i,j),True)
+                #else:
+                c = Cell(cell_top_left,self.cell_width,self.cell_height,(i,j),False)
                 if(c.type == LandorWater.LAND): land_count += 1
                 else: water_count += 1
                 row.append(c)
