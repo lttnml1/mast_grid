@@ -50,7 +50,7 @@ class Cell:
                     print(f"{sample.format_decimal()},red,square,{land}")
             if(land):
                 land_counter+=1
-        if(land_counter > 1):#len(sample_list)/2):
+        if(land_counter > len(sample_list)/2):
             self.type = LandorWater.LAND
     
     def set_of_interest(self, of_interest = True):
