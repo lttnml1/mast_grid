@@ -43,7 +43,7 @@ e.g., for a 5x5 grid
 """
 
 class Grid:
-    def __init__(self, scenario_file: str, new_results_dir: str, grid_width: int = 11, grid_height: int = 11, print_stats = False):
+    def __init__(self, scenario_file: str, new_results_dir: str = None, grid_width: int = 11, grid_height: int = 11, print_stats = False):
         self.scenario_file = scenario_file
         self.new_results_dir = new_results_dir
         self.grid_width = grid_width
@@ -54,7 +54,8 @@ class Grid:
         self.max_distance_from_center = (self.max_uxv_speed * self.max_time)/1000
         self.build_grid(print_stats)
         self.determine_of_interest()
-        self.compare_blue_locations()
+        if(new_results_dir):
+            self.compare_blue_locations()
     
     def plot(self):
         #define a new map at the center point
