@@ -260,7 +260,7 @@ class Grid:
         for row in self.grid:
             for cell in row:
                 if(cell.i == i and cell.j == j):
-                    return cell.center.format_decimal()
+                    return cell.center
         return Point(latitude=0,longitude=0)
 
     def convert_latlong_to_index(self, lat: float, lon: float):
