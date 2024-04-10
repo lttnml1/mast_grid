@@ -132,11 +132,13 @@ class Grid:
         #find max UxV speed (m/s)
         try:
             uxv_info = self.scenario_json["Multi-Run"]["Agents"][0]["Subsystems"][1]["Jam Conditions"][0]["Detectors"][0]
-            self.max_uxv_speed = uxv_info["UAV Speed"]["Speed"]
-            if(uxv_info["USV Speed"]["Speed"] > self.max_uxv_speed):
-                self.max_uxv_speed = uxv_info["USV Speed"]["Speed"]
+            self.uav_speed = uxv_info["UAV Speed"]["Speed"]
+            self.usv_speed = uxv_info["USV Speed"]["Speed"]
+            self.max_uxv_speed = self.uav_speed
+            if(self.usv_speed > self.max_uxv_speed):
+                self.max_uxv_speed = self.usv_speed
         except KeyError:
-            print("Error reading initial UxV speeds from JSON")
+            print("Error reading UxV speeds from JSON")
 
         #find number of UAVs and USVs
         try:
@@ -150,6 +152,12 @@ class Grid:
             self.max_comms_range = uxv_info["Maximum Comms Range"]["Distance"]
         except KeyError:
             print("Error reading maximum comms range from JSON")
+        
+        #find maximum sensing range
+        try:
+            self.max_sensing_range = uxv_info["Maximum Sensing Range"]["Distance"]
+        except KeyError:
+            print("Error reading maximum sensing range from JSON")
 
         #find max scenario execution time
         try:
@@ -282,6 +290,8 @@ class Grid:
         with open(file_name, "w") as grid_file:
             grid_file.write(f"{self.grid_height},{self.grid_width}\n")
             grid_file.write(f"{self.num_uavs},{self.num_usvs}\n")
+            grid_file.write(f"{self.uav_speed},{self.usv_speed}\n")
+            grid_file.write(f"{self.max_sensing_range}\n")
             grid_file.write(f"{self.max_comms_range}\n")
             init_blue_loc = self.convert_latlong_to_index(self.initial_blue_loc.latitude,self.initial_blue_loc.longitude)
             grid_file.write(f"{init_blue_loc[0]},{init_blue_loc[1]}\n")

@@ -1,6 +1,8 @@
 The format of the grid_output.txt file is:
 - height x width
 - #ofUAVs, #ofUSVs
+- UAV speed, USV speed (both in m/s)
+- UxV sensing range (in meters)
 - maximum communcations range (in meters)
 - blue initial location
 - red location
