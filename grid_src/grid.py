@@ -310,6 +310,7 @@ class Grid:
             init_blue_loc = self.convert_latlong_to_index(self.initial_blue_loc.latitude,self.initial_blue_loc.longitude)
             grid_file.write(f"{init_blue_loc[0]},{init_blue_loc[1]}\n")
             red_loc = self.convert_latlong_to_index(self.red_loc.latitude,self.red_loc.longitude)
+            grid_file.write(f"{self.red_loc.latitude},{self.red_loc.longitude}\n")
             grid_file.write(f"{red_loc[0]},{red_loc[1]}\n")
             
             

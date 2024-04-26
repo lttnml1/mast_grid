@@ -5,7 +5,8 @@ The format of the grid_output.txt file is:
 - UxV sensing range (in meters)
 - maximum communcations range (in meters)
 - blue initial location
-- red location
+- red location (lat, lon)
+- red location (i,j)
 - a list of blue locations i_1,j_1,i_2,j_2,etc.
 - destination (a "1" for the side that is destination) [top,right,bottom,left]
 - the maximum number of 30-minute cycles that can occur
