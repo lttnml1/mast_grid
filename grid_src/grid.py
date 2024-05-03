@@ -331,7 +331,8 @@ class Grid:
             grid_file.write(f"{math.floor(self.max_time/1800)}\n")
             for ai in self.areas_of_interest:
                 ai_i,ai_j = self.convert_latlong_to_index(ai[0],ai[1])
-                grid_file.write(f"{ai_i},{ai_j}")
+                #grid_file.write(f"{ai_i},{ai_j}")
+                grid_file.write(f"{ai[0]},{ai[1]}")
                 if(self.areas_of_interest.index(ai) < len(self.areas_of_interest)-1):grid_file.write(",") 
             grid_file.write("\n")
             i = 0
