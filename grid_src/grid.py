@@ -369,3 +369,30 @@ class Grid:
         
         if(dist > 0.01):
             raise Exception(f"There is a difference of {dist} km in the expected Virtual Leader positions and those read from: {data_dir}")
+    
+    def generate_alterate_red_locations(self, pDist=5):
+        i = 0
+        dist = math.sqrt(pDist**2+pDist**2)
+        for area in self.areas_of_interest:
+            print(f"TAI: {i}")
+            print("Center: ")
+            print(f"{area[0]},{area[1]}")
+            print(self.convert_latlong_to_index(area[0],area[1]))
+            taiCenter = Point(area[0],area[1])
+
+            taiTopRight = distance(kilometers = dist).destination(point=taiCenter,bearing=45)
+            print(f"Top Right: \n{taiTopRight.latitude},{taiTopRight.longitude}")
+            print(self.convert_latlong_to_index(taiTopRight.latitude,taiTopRight.longitude))
+
+            taiBottomRight = distance(kilometers = dist).destination(point=taiCenter,bearing=135)
+            print(f"Bottom Right: \n{taiBottomRight.latitude},{taiBottomRight.longitude}")
+            print(self.convert_latlong_to_index(taiBottomRight.latitude,taiBottomRight.longitude))
+
+            taiBottomLeft = distance(kilometers = dist).destination(point=taiCenter,bearing=225)
+            print(f"Bottom Left: \n{taiBottomLeft.latitude},{taiBottomLeft.longitude}")
+            print(self.convert_latlong_to_index(taiBottomLeft.latitude,taiBottomLeft.longitude))
+
+            taiTopLeft = distance(kilometers = dist).destination(point=taiCenter,bearing=315)
+            print(f"Top Left: \n{taiTopLeft.latitude},{taiTopLeft.longitude}")
+            print(self.convert_latlong_to_index(taiTopLeft.latitude,taiTopLeft.longitude))
+            i+=1
